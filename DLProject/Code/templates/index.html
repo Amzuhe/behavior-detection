@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Exam Proctoring Portal</title>
+  <style>
+    :root {
+      --bg-1: #f2f7ff;
+      --bg-2: #d8e7ff;
+      --panel: #ffffff;
+      --ink: #0d1b2a;
+      --muted: #4a5a73;
+      --ok: #137547;
+      --ok-bg: #dff7eb;
+      --warn: #b3172a;
+      --warn-bg: #ffe0e5;
+      --accent: #1d4d9c;
+      --border: #d5dfee;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at 20% 10%, var(--bg-1), var(--bg-2));
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .shell {
+      max-width: 1050px;
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 14px 34px rgba(14, 34, 69, 0.15);
+    }
+
+    .header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(120deg, #f6faff, #eaf2ff);
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      letter-spacing: 0.3px;
+    }
+
+    .header p {
+      margin: 8px 0 0;
+      color: var(--muted);
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 18px;
+      padding: 20px;
+    }
+
+    .video-card,
+    .status-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      padding: 14px;
+    }
+
+    video {
+      width: 100%;
+      background: #0f172a;
+      border-radius: 10px;
+      display: block;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+    }
+
+    .controls {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #startBtn {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    #stopBtn {
+      background: #e8edf7;
+      color: #2f405d;
+    }
+
+    .banner {
+      border-radius: 12px;
+      padding: 14px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .normal {
+      color: var(--ok);
+      background: var(--ok-bg);
+      border-color: #b6ebcd;
+    }
+
+    .suspicious {
+      color: var(--warn);
+      background: var(--warn-bg);
+      border-color: #f6b0bb;
+      animation: pulse 0.95s infinite;
+    }
+
+    .meta {
+      margin: 8px 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      word-break: break-word;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(179, 23, 42, 0.35); }
+      70% { box-shadow: 0 0 0 12px rgba(179, 23, 42, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(179, 23, 42, 0); }
+    }
+
+    @media (max-width: 860px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="header">
+      <h1>University Online Exam Proctoring Portal</h1>
+      <p>Live webcam monitoring with automatic behavior classification.</p>
+    </section>
+
+    <section class="content">
+      <div class="video-card">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas" width="224" height="224" hidden></canvas>
+        <div class="controls">
+          <button id="startBtn" type="button">Start Monitoring</button>
+          <button id="stopBtn" type="button">Stop</button>
+        </div>
+      </div>
+
+      <aside class="status-card">
+        <div id="statusBanner" class="banner normal">Status: Waiting to start</div>
+        <p id="predictedClass" class="meta">Predicted Class: -</p>
+        <p id="confidence" class="meta">Confidence: -</p>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const statusBanner = document.getElementById("statusBanner");
+    const predictedClassEl = document.getElementById("predictedClass");
+    const confidenceEl = document.getElementById("confidence");
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+
+    let mediaStream = null;
+    let loopHandle = null;
+    let requestInFlight = false;
+
+    async function startCamera() {
+      if (mediaStream) return;
+      mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      video.srcObject = mediaStream;
+    }
+
+    function stopCamera() {
+      if (!mediaStream) return;
+      mediaStream.getTracks().forEach(track => track.stop());
+      mediaStream = null;
+      video.srcObject = null;
+    }
+
+    function setStatusNormal(text) {
+      statusBanner.classList.remove("suspicious");
+      statusBanner.classList.add("normal");
+      statusBanner.textContent = text;
+    }
+
+    function setStatusSuspicious(text) {
+      statusBanner.classList.remove("normal");
+      statusBanner.classList.add("suspicious");
+      statusBanner.textContent = text;
+    }
+
+    async function sendFrame() {
+      if (!mediaStream || requestInFlight) return;
+      requestInFlight = true;
+      try {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL("image/jpeg", 0.85);
+
+        const res = await fetch("/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: imageData })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Prediction failed");
+
+        predictedClassEl.textContent = `Predicted Class: ${data.predicted_class}`;
+        confidenceEl.textContent = `Confidence: ${(data.confidence * 100).toFixed(2)}%`;
+
+        if (data.is_suspicious) {
+          setStatusSuspicious(`Suspicious Activity: ${data.suspicious_type}`);
+        } else {
+          setStatusNormal("Normal Activity");
+        }
+      } catch (err) {
+        setStatusSuspicious(`Error: ${err.message}`);
+      } finally {
+        requestInFlight = false;
+      }
+    }
+
+    async function startMonitoring() {
+      try {
+        await startCamera();
+        setStatusNormal("Normal Activity");
+        if (loopHandle) clearInterval(loopHandle);
+        loopHandle = setInterval(sendFrame, 250);
+      } catch (err) {
+        setStatusSuspicious(`Camera Error: ${err.message}`);
+      }
+    }
+
+    function stopMonitoring() {
+      if (loopHandle) {
+        clearInterval(loopHandle);
+        loopHandle = null;
+      }
+      stopCamera();
+      predictedClassEl.textContent = "Predicted Class: -";
+      confidenceEl.textContent = "Confidence: -";
+      setStatusNormal("Status: Monitoring stopped");
+    }
+
+    startBtn.addEventListener("click", startMonitoring);
+    stopBtn.addEventListener("click", stopMonitoring);
+  </script>
+</body>
+</html>
