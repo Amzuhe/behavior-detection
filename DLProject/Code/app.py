@@ -45,13 +45,14 @@ def build_inference_model() -> keras.Model:
     base_model = keras.applications.MobileNetV2(
         input_shape=IMG_SIZE + (3,),
         include_top=False,
-        weights="imagenet",
+        weights=None,
     )
     base_model.trainable = False
 
     inputs = keras.Input(shape=IMG_SIZE + (3,))
     x = data_augmentation(inputs)
-    x = keras.applications.mobilenet_v2.preprocess_input(ining=False)
+    x = keras.applications.mobilenet_v2.preprocess_input(x)
+    x = base_model(x, training=False)
     x = keras.layers.GlobalAveragePooling2D()(x)
     x = keras.layers.BatchNormalization()(x)
     x = keras.layers.Dropout(0.5)(x)
