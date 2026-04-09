@@ -21,7 +21,8 @@ CLASS_NAMES = [
     "writing_reading",
 ]
 NUM_CLASSES = len(CLASS_NAMES)
-NORMAL_CLASSES = {"focused", "writing_reading"}
+NORMAL_CLASSES = {"listening", "focused", "writing_reading"}
+SUSPICIOUS_CLASSES = {"distracted", "fatigue", "sleeping", "using_smartphone"}
 
 
 def decode_base64_image(payload: str) -> bytes:
@@ -99,7 +100,12 @@ def predict():
     pred_idx = int(np.argmax(probs))
     pred_class = CLASS_NAMES[pred_idx]
     confidence = float(probs[pred_idx])
-    is_suspicious = pred_class not in NORMAL_CLASSES
+    if pred_class in SUSPICIOUS_CLASSES:
+        is_suspicious = True
+    else:
+        # Classes not explicitly marked suspicious (for example "raise_hand")
+        # are treated as normal/green.
+        is_suspicious = False
 
     return jsonify(
         {
