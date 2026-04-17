@@ -74,8 +74,24 @@ app = Flask(__name__)
 if os.getenv("PROCTOR_ENABLE_GPU", "0") != "1":
     tf.config.set_visible_devices([], "GPU")
 
-model = build_inference_model()
-model.load_weights(MODEL_PATH)
+
+def load_inference_model(model_path: Path) -> keras.Model:
+    # Prefer full-model load (works when .h5 was saved via model.save()).
+    try:
+        loaded = keras.models.load_model(model_path, compile=False)
+        print(f"Loaded full model from: {model_path}")
+        return loaded
+    except Exception as full_model_error:
+        print(f"Full-model load failed, trying weights path: {full_model_error}")
+
+    # Fallback for weights-only checkpoints.
+    fallback = build_inference_model()
+    fallback.load_weights(model_path)
+    print(f"Loaded weights into inference architecture from: {model_path}")
+    return fallback
+
+
+model = load_inference_model(MODEL_PATH)
 
 
 @app.get("/")
@@ -97,9 +113,13 @@ def predict():
     except Exception as exc:
         return jsonify({"error": f"Failed to process image: {exc}"}), 400
 
-    pred_idx = int(np.argmax(probs))
+    sorted_indices = np.argsort(probs)[::-1]
+    pred_idx = int(sorted_indices[0])
+    second_idx = int(sorted_indices[1]) if len(sorted_indices) > 1 else pred_idx
     pred_class = CLASS_NAMES[pred_idx]
     confidence = float(probs[pred_idx])
+    second_confidence = float(probs[second_idx])
+    margin = confidence - second_confidence
     if pred_class in SUSPICIOUS_CLASSES:
         is_suspicious = True
     else:
@@ -111,6 +131,9 @@ def predict():
         {
             "predicted_class": pred_class,
             "confidence": confidence,
+            "margin": margin,
+            "second_predicted_class": CLASS_NAMES[second_idx],
+            "second_confidence": second_confidence,
             "is_suspicious": is_suspicious,
             "suspicious_type": pred_class if is_suspicious else None,
         }

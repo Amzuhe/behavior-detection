@@ -186,6 +186,14 @@
     let mediaStream = null;
     let loopHandle = null;
     let requestInFlight = false;
+    const history = [];
+    const HISTORY_MS = 2000;
+    const MIN_CONFIDENCE = 0.60;
+    const MIN_MARGIN = 0.15;
+    const SUSPICIOUS_CLASSES = new Set(["distracted", "fatigue", "sleeping", "using_smartphone"]);
+    let stableLabel = null;
+    let pendingLabel = null;
+    let pendingSince = null;
 
     async function startCamera() {
       if (mediaStream) return;
@@ -212,6 +220,68 @@
       statusBanner.textContent = text;
     }
 
+    function pushHistory(label, confidence, margin, timestamp) {
+      history.push({ label, confidence, margin, timestamp });
+      while (history.length && (timestamp - history[0].timestamp) > HISTORY_MS) {
+        history.shift();
+      }
+    }
+
+    function pickWindowWinner() {
+      if (!history.length) return null;
+      const scoreByLabel = {};
+      for (const item of history) {
+        const weight = item.confidence * Math.max(item.margin, 0.01);
+        scoreByLabel[item.label] = (scoreByLabel[item.label] || 0) + weight;
+      }
+      let bestLabel = null;
+      let bestScore = -Infinity;
+      for (const [label, score] of Object.entries(scoreByLabel)) {
+        if (score > bestScore) {
+          bestScore = score;
+          bestLabel = label;
+        }
+      }
+      return bestLabel;
+    }
+
+    function updateStableLabel(candidateLabel, now) {
+      if (!candidateLabel) return stableLabel;
+      if (stableLabel === null) {
+        stableLabel = candidateLabel;
+        pendingLabel = null;
+        pendingSince = null;
+        return stableLabel;
+      }
+      if (candidateLabel === stableLabel) {
+        pendingLabel = null;
+        pendingSince = null;
+        return stableLabel;
+      }
+      if (pendingLabel !== candidateLabel) {
+        pendingLabel = candidateLabel;
+        pendingSince = now;
+        return stableLabel;
+      }
+
+      const switchDelayMs = SUSPICIOUS_CLASSES.has(candidateLabel) ? 1000 : 1500;
+      if ((now - pendingSince) >= switchDelayMs) {
+        stableLabel = candidateLabel;
+        pendingLabel = null;
+        pendingSince = null;
+      }
+      return stableLabel;
+    }
+
+    function applyUiForLabel(label) {
+      const suspicious = SUSPICIOUS_CLASSES.has(label);
+      if (suspicious) {
+        setStatusSuspicious(`Suspicious Activity: ${label}`);
+      } else {
+        setStatusNormal(`Normal Activity: ${label}`);
+      }
+    }
+
     async function sendFrame() {
       if (!mediaStream || requestInFlight) return;
       requestInFlight = true;
@@ -228,13 +298,23 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Prediction failed");
 
-        predictedClassEl.textContent = `Predicted Class: ${data.predicted_class}`;
-        confidenceEl.textContent = `Confidence: ${(data.confidence * 100).toFixed(2)}%`;
+        const now = Date.now();
+        const confidence = Number(data.confidence || 0);
+        const margin = Number(data.margin || 0);
+        const rawLabel = String(data.predicted_class || "unknown");
+        const gatedLabel = (confidence >= MIN_CONFIDENCE && margin >= MIN_MARGIN) ? rawLabel : "uncertain";
+        pushHistory(gatedLabel, confidence, margin, now);
 
-        if (data.is_suspicious) {
-          setStatusSuspicious(`Suspicious Activity: ${data.suspicious_type}`);
+        const winner = pickWindowWinner();
+        const shownLabel = updateStableLabel(winner, now);
+
+        predictedClassEl.textContent = `Predicted Class (Raw): ${rawLabel} | Stable: ${shownLabel || "-"}`;
+        confidenceEl.textContent = `Confidence: ${(confidence * 100).toFixed(2)}% | Margin: ${(margin * 100).toFixed(2)}%`;
+
+        if (!shownLabel || shownLabel === "uncertain") {
+          setStatusNormal("Analyzing...");
         } else {
-          setStatusNormal("Normal Activity");
+          applyUiForLabel(shownLabel);
         }
       } catch (err) {
         setStatusSuspicious(`Error: ${err.message}`);
@@ -246,7 +326,11 @@
     async function startMonitoring() {
       try {
         await startCamera();
-        setStatusNormal("Normal Activity");
+        history.length = 0;
+        stableLabel = null;
+        pendingLabel = null;
+        pendingSince = null;
+        setStatusNormal("Analyzing...");
         if (loopHandle) clearInterval(loopHandle);
         loopHandle = setInterval(sendFrame, 250);
       } catch (err) {
@@ -262,6 +346,10 @@
       stopCamera();
       predictedClassEl.textContent = "Predicted Class: -";
       confidenceEl.textContent = "Confidence: -";
+      history.length = 0;
+      stableLabel = null;
+      pendingLabel = null;
+      pendingSince = null;
       setStatusNormal("Status: Monitoring stopped");
     }
 
