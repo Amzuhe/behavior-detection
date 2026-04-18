@@ -9,19 +9,18 @@ from tensorflow import keras
 
 
 IMG_SIZE = (224, 224)
-MODEL_PATH = Path(__file__).resolve().parent / "final_proctor_model.h5"
+MODEL_DIR = Path(__file__).resolve().parent
 CLASS_NAMES = [
     "distracted",
     "fatigue",
     "focused",
-    "listening",
     "raise_hand",
     "sleeping",
     "using_smartphone",
     "writing_reading",
 ]
 NUM_CLASSES = len(CLASS_NAMES)
-NORMAL_CLASSES = {"listening", "focused", "writing_reading"}
+NORMAL_CLASSES = {"focused", "writing_reading"}
 SUSPICIOUS_CLASSES = {"distracted", "fatigue", "sleeping", "using_smartphone"}
 
 
@@ -75,6 +74,32 @@ if os.getenv("PROCTOR_ENABLE_GPU", "0") != "1":
     tf.config.set_visible_devices([], "GPU")
 
 
+def resolve_model_path(model_dir: Path) -> Path:
+    preferred_names = [
+        "final_proctor_model.keras",
+        "final_proctor_model.h5",
+        "best_final_proctor_model_finetune.h5",
+    ]
+    candidates = [model_dir / name for name in preferred_names if (model_dir / name).exists()]
+    if not candidates:
+        raise FileNotFoundError(
+            f"No supported model file found in {model_dir}. "
+            "Expected one of: final_proctor_model.keras, final_proctor_model.h5, "
+            "best_final_proctor_model_finetune.h5"
+        )
+
+    # Prefer deploy-ready final models, then break ties by newest modified time.
+    candidates.sort(
+        key=lambda path: (
+            0 if path.name.startswith("final_proctor_model") else 1,
+            -path.stat().st_mtime,
+        )
+    )
+    selected = candidates[0]
+    print(f"Using model file: {selected.name} (modified {selected.stat().st_mtime})")
+    return selected
+
+
 def load_inference_model(model_path: Path) -> keras.Model:
     # Prefer full-model load (works when .h5 was saved via model.save()).
     try:
@@ -90,7 +115,7 @@ def load_inference_model(model_path: Path) -> keras.Model:
     print(f"Loaded weights into inference architecture from: {model_path}")
     return fallback
 
-
+MODEL_PATH = resolve_model_path(MODEL_DIR)
 model = load_inference_model(MODEL_PATH)
 
 
