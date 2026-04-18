@@ -3,172 +3,335 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Exam Proctoring Portal</title>
+  <title>Behavior Detection System</title>
   <style>
     :root {
-      --bg-1: #f2f7ff;
-      --bg-2: #d8e7ff;
-      --panel: #ffffff;
-      --ink: #0d1b2a;
-      --muted: #4a5a73;
-      --ok: #137547;
-      --ok-bg: #dff7eb;
-      --warn: #b3172a;
-      --warn-bg: #ffe0e5;
-      --accent: #1d4d9c;
-      --border: #d5dfee;
+      --page-top: #d9f8f4;
+      --page-bottom: #bdecef;
+      --frame: #f6f5f5;
+      --frame-border: #1d1d1d;
+      --panel: #d9d9d9;
+      --screen: #030303;
+      --text: #171717;
+      --muted: #404040;
+      --yellow: #ffe91a;
+      --green: #30d158;
+      --red: #ff453a;
+      --blue: #1d45ff;
+      --orange: #ff9f0a;
+      --button-text-light: #ffffff;
+      --shadow: 0 18px 36px rgba(23, 23, 23, 0.12);
+      --radius-shell: 28px;
+      --radius-panel: 24px;
+      --radius-pill: 20px;
+      --radius-button: 16px;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      color: var(--ink);
-      background: radial-gradient(circle at 20% 10%, var(--bg-1), var(--bg-2));
       min-height: 100vh;
-      padding: 24px;
+      padding: 28px;
+      font-family: "Trebuchet MS", "Gill Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.45), transparent 30%),
+        linear-gradient(180deg, var(--page-top), var(--page-bottom));
     }
 
     .shell {
-      max-width: 1050px;
+      max-width: 1120px;
       margin: 0 auto;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 16px;
+      background: var(--frame);
+      border: 2px solid var(--frame-border);
+      border-radius: var(--radius-shell);
+      box-shadow: var(--shadow);
       overflow: hidden;
-      box-shadow: 0 14px 34px rgba(14, 34, 69, 0.15);
     }
 
-    .header {
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--border);
-      background: linear-gradient(120deg, #f6faff, #eaf2ff);
+    .shell-header {
+      padding: 20px 24px 18px;
+      border-bottom: 2px solid rgba(29, 29, 29, 0.75);
+      text-align: center;
+      background: rgba(215, 215, 215, 0.72);
     }
 
-    .header h1 {
+    .shell-header h1 {
       margin: 0;
-      font-size: 1.35rem;
-      letter-spacing: 0.3px;
+      font-size: clamp(2rem, 4.2vw, 3rem);
+      font-weight: 500;
+      letter-spacing: 0.05em;
     }
 
-    .header p {
-      margin: 8px 0 0;
-      color: var(--muted);
-    }
-
-    .content {
+    .shell-body {
+      padding: 24px 20px 28px;
       display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 18px;
-      padding: 20px;
+      grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
+      gap: 20px;
+      align-items: stretch;
     }
 
-    .video-card,
-    .status-card {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: #fff;
-      padding: 14px;
+    .media-area {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 0;
     }
 
-    video {
+    .screen-wrap {
+      position: relative;
+      min-height: 360px;
+      border: 2px solid var(--frame-border);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+      background: var(--screen);
+    }
+
+    .screen-wrap video {
       width: 100%;
-      background: #0f172a;
-      border-radius: 10px;
+      height: 100%;
       display: block;
-      aspect-ratio: 16 / 9;
       object-fit: cover;
+      background: var(--screen);
+    }
+
+    .screen-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: clamp(1.2rem, 2.5vw, 2rem);
+      letter-spacing: 0.03em;
+      text-transform: lowercase;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .screen-placeholder.hidden {
+      opacity: 0;
     }
 
     .controls {
-      margin-top: 12px;
       display: flex;
-      gap: 10px;
+      gap: 18px;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+    }
+
+    .control-btn {
+      min-width: 170px;
+      padding: 14px 20px;
+      border: 2px solid var(--frame-border);
+      border-radius: var(--radius-button);
+      font-size: 1.05rem;
+      line-height: 1;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
+      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.12);
+    }
+
+    .control-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: saturate(1.05);
+    }
+
+    .control-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .control-btn.upload {
+      background: var(--blue);
+      color: var(--button-text-light);
+    }
+
+    .control-btn.start {
+      background: var(--orange);
+      color: #111111;
+    }
+
+    .control-btn.stop {
+      background: var(--red);
+      color: #111111;
+    }
+
+    .status-panel {
+      background: var(--panel);
+      border: 2px solid var(--frame-border);
+      border-radius: var(--radius-panel);
+      padding: 18px 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .status-pill {
+      border: 2px solid var(--frame-border);
+      border-radius: var(--radius-pill);
+      padding: 12px 16px;
+      text-align: center;
+      font-size: clamp(1.35rem, 2.8vw, 1.9rem);
+      line-height: 1.1;
+      background: var(--yellow);
+    }
+
+    .status-pill.status-analyzing {
+      background: var(--yellow);
+    }
+
+    .status-pill.status-normal {
+      background: var(--green);
+    }
+
+    .status-pill.status-suspicious {
+      background: var(--red);
+    }
+
+    .summary {
+      display: grid;
+      gap: 6px;
+      font-size: 1.05rem;
+      line-height: 1.3;
+    }
+
+    .summary-row {
+      display: flex;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
-    button {
-      border: 0;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    #startBtn {
-      background: var(--accent);
-      color: #fff;
-    }
-
-    #stopBtn {
-      background: #e8edf7;
-      color: #2f405d;
-    }
-
-    .banner {
-      border-radius: 12px;
-      padding: 14px;
+    .summary-label {
       font-weight: 700;
-      margin-bottom: 12px;
-      border: 1px solid transparent;
-      transition: all 0.2s ease;
     }
 
-    .normal {
-      color: var(--ok);
-      background: var(--ok-bg);
-      border-color: #b6ebcd;
+    .scores-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+      font-size: 1rem;
+      max-height: 100%;
     }
 
-    .suspicious {
-      color: var(--warn);
-      background: var(--warn-bg);
-      border-color: #f6b0bb;
-      animation: pulse 0.95s infinite;
+    .scores-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(23, 23, 23, 0.15);
+      padding-bottom: 6px;
     }
 
-    .meta {
-      margin: 8px 0;
+    .scores-list li:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .score-label {
+      color: var(--text);
+    }
+
+    .score-value {
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .status-panel .helper {
+      margin: 0;
       color: var(--muted);
       font-size: 0.95rem;
-      word-break: break-word;
+      line-height: 1.4;
     }
 
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(179, 23, 42, 0.35); }
-      70% { box-shadow: 0 0 0 12px rgba(179, 23, 42, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(179, 23, 42, 0); }
+    #fileInput {
+      display: none;
     }
 
-    @media (max-width: 860px) {
-      .content {
+    @media (max-width: 900px) {
+      body {
+        padding: 18px;
+      }
+
+      .shell-body {
         grid-template-columns: 1fr;
+      }
+
+      .screen-wrap {
+        min-height: 280px;
+      }
+
+      .controls {
+        justify-content: center;
+      }
+
+      .control-btn {
+        flex: 1 1 180px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .shell-header h1 {
+        letter-spacing: 0.02em;
+      }
+
+      .shell-body {
+        padding: 18px 14px 22px;
+      }
+
+      .status-panel {
+        padding: 14px;
       }
     }
   </style>
 </head>
 <body>
   <main class="shell">
-    <section class="header">
-      <h1>University Online Exam Proctoring Portal</h1>
-      <p>Live webcam monitoring with automatic behavior classification.</p>
+    <section class="shell-header">
+      <h1>Webcam-Based Behavior Detection System</h1>
     </section>
 
-    <section class="content">
-      <div class="video-card">
-        <video id="video" autoplay playsinline muted></video>
+    <section class="shell-body">
+      <div class="media-area">
+        <div class="screen-wrap">
+          <video id="video" autoplay playsinline muted></video>
+          <div id="screenPlaceholder" class="screen-placeholder">webcam/video</div>
+        </div>
+
         <canvas id="canvas" width="224" height="224" hidden></canvas>
+        <input id="fileInput" type="file" accept="video/*" />
+
         <div class="controls">
-          <button id="startBtn" type="button">Start Monitoring</button>
-          <button id="stopBtn" type="button">Stop</button>
+          <button id="uploadBtn" class="control-btn upload" type="button">Upload Video</button>
+          <button id="startBtn" class="control-btn start" type="button">Start Monitoring</button>
+          <button id="stopBtn" class="control-btn stop" type="button">Stop</button>
         </div>
       </div>
 
-      <aside class="status-card">
-        <div id="statusBanner" class="banner normal">Status: Waiting to start</div>
-        <p id="predictedClass" class="meta">Predicted Class: -</p>
-        <p id="confidence" class="meta">Confidence: -</p>
+      <aside class="status-panel">
+        <div id="statusBanner" class="status-pill status-analyzing">Analyzing...</div>
+
+        <div class="summary">
+          <div class="summary-row">
+            <span class="summary-label">Predicted Class (Raw):</span>
+            <span id="predictedClass">-</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Stable:</span>
+            <span id="stableClass">-</span>
+          </div>
+        </div>
+
+        <ul id="scoresList" class="scores-list"></ul>
+        <p class="helper">All labels remain visible while monitoring so confidence changes are easy to track.</p>
       </aside>
     </section>
   </main>
@@ -179,26 +342,111 @@
     const ctx = canvas.getContext("2d");
     const statusBanner = document.getElementById("statusBanner");
     const predictedClassEl = document.getElementById("predictedClass");
-    const confidenceEl = document.getElementById("confidence");
+    const stableClassEl = document.getElementById("stableClass");
+    const scoresList = document.getElementById("scoresList");
     const startBtn = document.getElementById("startBtn");
     const stopBtn = document.getElementById("stopBtn");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const fileInput = document.getElementById("fileInput");
+    const screenPlaceholder = document.getElementById("screenPlaceholder");
+
+    const LABEL_NAMES = {
+      distracted: "Distracted",
+      fatigue: "Fatigue",
+      focused: "Focused",
+      listening: "Listening",
+      raise_hand: "Raise Hand",
+      sleeping: "Sleeping",
+      using_smartphone: "Using Smartphone",
+      writing_reading: "Writing/Reading"
+    };
+    const LABEL_ORDER = Object.keys(LABEL_NAMES);
+    const SUSPICIOUS_CLASSES = new Set(["distracted", "fatigue", "sleeping", "using_smartphone"]);
+    const HISTORY_MS = 2000;
+    const MIN_CONFIDENCE = 0.6;
+    const LABEL_THRESHOLDS = {
+      raise_hand: 0.9,
+      focused: 0.05,
+      using_smartphone: 0.3
+    };
 
     let mediaStream = null;
+    let uploadedVideoUrl = null;
     let loopHandle = null;
     let requestInFlight = false;
+    let activeSource = null;
     const history = [];
-    const HISTORY_MS = 2000;
-    const MIN_CONFIDENCE = 0.60;
-    const MIN_MARGIN = 0.15;
-    const SUSPICIOUS_CLASSES = new Set(["distracted", "fatigue", "sleeping", "using_smartphone"]);
     let stableLabel = null;
     let pendingLabel = null;
     let pendingSince = null;
 
+    function formatLabel(label) {
+      return LABEL_NAMES[label] || label || "-";
+    }
+
+    function getThresholdForLabel(label) {
+      return LABEL_THRESHOLDS[label] ?? MIN_CONFIDENCE;
+    }
+
+    function createScoreRows() {
+      scoresList.innerHTML = "";
+      for (const label of LABEL_ORDER) {
+        const item = document.createElement("li");
+        item.dataset.label = label;
+        item.innerHTML = `
+          <span class="score-label">${formatLabel(label)}</span>
+          <span class="score-value">0.00%</span>
+        `;
+        scoresList.appendChild(item);
+      }
+    }
+
+    function setScoreRows(scores = []) {
+      const scoresByLabel = new Map(scores.map(item => [item.label, Number(item.confidence || 0)]));
+      for (const row of scoresList.children) {
+        const valueEl = row.querySelector(".score-value");
+        const confidence = scoresByLabel.get(row.dataset.label) || 0;
+        valueEl.textContent = `${(confidence * 100).toFixed(2)}%`;
+      }
+    }
+
+    function setStatus(kind, text) {
+      statusBanner.classList.remove("status-analyzing", "status-normal", "status-suspicious");
+      statusBanner.classList.add(`status-${kind}`);
+      statusBanner.textContent = text;
+    }
+
+    function setControlsActive(isBusy) {
+      startBtn.disabled = isBusy;
+      uploadBtn.disabled = isBusy;
+      stopBtn.disabled = !isBusy;
+    }
+
+    function resetState() {
+      history.length = 0;
+      stableLabel = null;
+      pendingLabel = null;
+      pendingSince = null;
+      requestInFlight = false;
+      predictedClassEl.textContent = "-";
+      stableClassEl.textContent = "-";
+      setScoreRows();
+    }
+
+    function hidePlaceholder() {
+      screenPlaceholder.classList.add("hidden");
+    }
+
+    function showPlaceholder() {
+      screenPlaceholder.classList.remove("hidden");
+    }
+
     async function startCamera() {
-      if (mediaStream) return;
       mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       video.srcObject = mediaStream;
+      video.removeAttribute("src");
+      await video.play();
+      hidePlaceholder();
     }
 
     function stopCamera() {
@@ -208,20 +456,25 @@
       video.srcObject = null;
     }
 
-    function setStatusNormal(text) {
-      statusBanner.classList.remove("suspicious");
-      statusBanner.classList.add("normal");
-      statusBanner.textContent = text;
+    function stopUploadedVideo() {
+      video.pause();
+      video.loop = false;
+      if (uploadedVideoUrl) {
+        URL.revokeObjectURL(uploadedVideoUrl);
+        uploadedVideoUrl = null;
+      }
+      video.removeAttribute("src");
+      video.load();
     }
 
-    function setStatusSuspicious(text) {
-      statusBanner.classList.remove("normal");
-      statusBanner.classList.add("suspicious");
-      statusBanner.textContent = text;
+    function clearMonitoringLoop() {
+      if (!loopHandle) return;
+      clearInterval(loopHandle);
+      loopHandle = null;
     }
 
-    function pushHistory(label, confidence, margin, timestamp) {
-      history.push({ label, confidence, margin, timestamp });
+    function pushHistory(label, confidence, timestamp) {
+      history.push({ label, confidence, timestamp });
       while (history.length && (timestamp - history[0].timestamp) > HISTORY_MS) {
         history.shift();
       }
@@ -231,9 +484,9 @@
       if (!history.length) return null;
       const scoreByLabel = {};
       for (const item of history) {
-        const weight = item.confidence * Math.max(item.margin, 0.01);
-        scoreByLabel[item.label] = (scoreByLabel[item.label] || 0) + weight;
+        scoreByLabel[item.label] = (scoreByLabel[item.label] || 0) + item.confidence;
       }
+
       let bestLabel = null;
       let bestScore = -Infinity;
       for (const [label, score] of Object.entries(scoreByLabel)) {
@@ -253,11 +506,13 @@
         pendingSince = null;
         return stableLabel;
       }
+
       if (candidateLabel === stableLabel) {
         pendingLabel = null;
         pendingSince = null;
         return stableLabel;
       }
+
       if (pendingLabel !== candidateLabel) {
         pendingLabel = candidateLabel;
         pendingSince = now;
@@ -273,17 +528,23 @@
       return stableLabel;
     }
 
-    function applyUiForLabel(label) {
-      const suspicious = SUSPICIOUS_CLASSES.has(label);
-      if (suspicious) {
-        setStatusSuspicious(`Suspicious Activity: ${label}`);
+    function updateStatusFromLabel(label) {
+      if (!label || label === "analyzing") {
+        setStatus("analyzing", "Analyzing...");
+        return;
+      }
+
+      if (SUSPICIOUS_CLASSES.has(label)) {
+        setStatus("suspicious", "Suspicious");
       } else {
-        setStatusNormal(`Normal Activity: ${label}`);
+        setStatus("normal", "Normal");
       }
     }
 
     async function sendFrame() {
-      if (!mediaStream || requestInFlight) return;
+      if (requestInFlight || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+      if (activeSource === "upload" && video.ended) return;
+
       requestInFlight = true;
       try {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -300,61 +561,111 @@
 
         const now = Date.now();
         const confidence = Number(data.confidence || 0);
-        const margin = Number(data.margin || 0);
         const rawLabel = String(data.predicted_class || "unknown");
-        const gatedLabel = (confidence >= MIN_CONFIDENCE && margin >= MIN_MARGIN) ? rawLabel : "uncertain";
-        pushHistory(gatedLabel, confidence, margin, now);
+        const threshold = getThresholdForLabel(rawLabel);
+        const shownCandidate = confidence >= threshold ? rawLabel : "analyzing";
+
+        setScoreRows(Array.isArray(data.scores) ? data.scores : []);
+        pushHistory(shownCandidate, confidence, now);
 
         const winner = pickWindowWinner();
         const shownLabel = updateStableLabel(winner, now);
 
-        predictedClassEl.textContent = `Predicted Class (Raw): ${rawLabel} | Stable: ${shownLabel || "-"}`;
-        confidenceEl.textContent = `Confidence: ${(confidence * 100).toFixed(2)}% | Margin: ${(margin * 100).toFixed(2)}%`;
-
-        if (!shownLabel || shownLabel === "uncertain") {
-          setStatusNormal("Analyzing...");
-        } else {
-          applyUiForLabel(shownLabel);
-        }
+        predictedClassEl.textContent = formatLabel(rawLabel);
+        stableClassEl.textContent = shownLabel && shownLabel !== "analyzing" ? formatLabel(shownLabel) : "-";
+        updateStatusFromLabel(shownLabel);
       } catch (err) {
-        setStatusSuspicious(`Error: ${err.message}`);
+        setStatus("suspicious", `Error: ${err.message}`);
       } finally {
         requestInFlight = false;
       }
     }
 
+    async function beginMonitoring(source) {
+      resetState();
+      clearMonitoringLoop();
+      activeSource = source;
+      setStatus("analyzing", "Analyzing...");
+      setControlsActive(true);
+      hidePlaceholder();
+      loopHandle = setInterval(sendFrame, 250);
+    }
+
     async function startMonitoring() {
+      if (activeSource) return;
+      setControlsActive(true);
       try {
         await startCamera();
-        history.length = 0;
-        stableLabel = null;
-        pendingLabel = null;
-        pendingSince = null;
-        setStatusNormal("Analyzing...");
-        if (loopHandle) clearInterval(loopHandle);
-        loopHandle = setInterval(sendFrame, 250);
+        await beginMonitoring("camera");
       } catch (err) {
-        setStatusSuspicious(`Camera Error: ${err.message}`);
+        activeSource = null;
+        stopCamera();
+        showPlaceholder();
+        setControlsActive(false);
+        setStatus("suspicious", `Camera Error: ${err.message}`);
+      }
+    }
+
+    async function startUploadedVideo(file) {
+      if (!file || activeSource) return;
+      setControlsActive(true);
+
+      try {
+        stopCamera();
+        stopUploadedVideo();
+        uploadedVideoUrl = URL.createObjectURL(file);
+        video.srcObject = null;
+        video.src = uploadedVideoUrl;
+        video.muted = true;
+        video.loop = true;
+        await video.play();
+        await beginMonitoring("upload");
+      } catch (err) {
+        activeSource = null;
+        stopUploadedVideo();
+        showPlaceholder();
+        setControlsActive(false);
+        setStatus("suspicious", `Video Error: ${err.message}`);
       }
     }
 
     function stopMonitoring() {
-      if (loopHandle) {
-        clearInterval(loopHandle);
-        loopHandle = null;
-      }
+      clearMonitoringLoop();
       stopCamera();
-      predictedClassEl.textContent = "Predicted Class: -";
-      confidenceEl.textContent = "Confidence: -";
-      history.length = 0;
-      stableLabel = null;
-      pendingLabel = null;
-      pendingSince = null;
-      setStatusNormal("Status: Monitoring stopped");
+      stopUploadedVideo();
+      activeSource = null;
+      fileInput.value = "";
+      resetState();
+      showPlaceholder();
+      setControlsActive(false);
+      setStatus("analyzing", "Stopped");
     }
+
+    uploadBtn.addEventListener("click", () => {
+      if (uploadBtn.disabled) return;
+      fileInput.click();
+    });
+
+    fileInput.addEventListener("change", async (event) => {
+      const [file] = event.target.files || [];
+      if (!file) return;
+      await startUploadedVideo(file);
+    });
+
+    video.addEventListener("loadeddata", hidePlaceholder);
+    video.addEventListener("ended", () => {
+      if (activeSource === "upload") {
+        video.currentTime = 0;
+        video.play().catch(() => {});
+      }
+    });
 
     startBtn.addEventListener("click", startMonitoring);
     stopBtn.addEventListener("click", stopMonitoring);
+
+    createScoreRows();
+    setScoreRows();
+    setControlsActive(false);
   </script>
 </body>
 </html>

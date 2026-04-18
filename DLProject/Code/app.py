@@ -134,6 +134,13 @@ def predict():
             "margin": margin,
             "second_predicted_class": CLASS_NAMES[second_idx],
             "second_confidence": second_confidence,
+            "scores": [
+                {
+                    "label": class_name,
+                    "confidence": float(prob),
+                }
+                for class_name, prob in zip(CLASS_NAMES, probs)
+            ],
             "is_suspicious": is_suspicious,
             "suspicious_type": pred_class if is_suspicious else None,
         }
