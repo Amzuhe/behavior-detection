@@ -68,8 +68,6 @@ def build_inference_model() -> keras.Model:
 
 app = Flask(__name__)
 
-# DirectML + multi-adapter setups can fail on model load with duplicate GPU kernels.
-# Default to stable CPU inference unless explicitly overridden.
 if os.getenv("PROCTOR_ENABLE_GPU", "0") != "1":
     tf.config.set_visible_devices([], "GPU")
 
@@ -88,7 +86,6 @@ def resolve_model_path(model_dir: Path) -> Path:
             "best_final_proctor_model_finetune.h5"
         )
 
-    # Prefer deploy-ready final models, then break ties by newest modified time.
     candidates.sort(
         key=lambda path: (
             0 if path.name.startswith("final_proctor_model") else 1,
@@ -101,7 +98,6 @@ def resolve_model_path(model_dir: Path) -> Path:
 
 
 def load_inference_model(model_path: Path) -> keras.Model:
-    # Prefer full-model load (works when .h5 was saved via model.save()).
     try:
         loaded = keras.models.load_model(model_path, compile=False)
         print(f"Loaded full model from: {model_path}")
@@ -109,7 +105,6 @@ def load_inference_model(model_path: Path) -> keras.Model:
     except Exception as full_model_error:
         print(f"Full-model load failed, trying weights path: {full_model_error}")
 
-    # Fallback for weights-only checkpoints.
     fallback = build_inference_model()
     fallback.load_weights(model_path)
     print(f"Loaded weights into inference architecture from: {model_path}")
@@ -148,8 +143,6 @@ def predict():
     if pred_class in SUSPICIOUS_CLASSES:
         is_suspicious = True
     else:
-        # Classes not explicitly marked suspicious (for example "raise_hand")
-        # are treated as normal/green.
         is_suspicious = False
 
     return jsonify(
