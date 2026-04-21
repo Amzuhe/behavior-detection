@@ -44,9 +44,12 @@ DLProject/
 
 ## Run With Docker
 
+Ensure Docker Engine is running.
+
 From `DLProject/Code`:
 
 ```bash
+cd DLProject/Code
 docker build --no-cache -t exam-proctor .
 docker run --rm -p 5000:5000 exam-proctor
 ```
